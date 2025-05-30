@@ -13,12 +13,12 @@ export default function HomePage() {
       <header className="App-header">
         {keycloak.authenticated ? (
           <>
-            <p>233Wessldeece, {keycloak.tokenParsed?.preferred_username}!</p>
+            <p>2322Wessldeece, {keycloak.tokenParsed?.preferred_username}!</p>
             <button onClick={() => keycloak.logout()}>Logout</button>
           </>
         ):(
           <>
-          <p>SSKKKKKKSSSSWUDJJFSHUSFFHUJIOJIODS2er2dddAASSSSSSaaaaaasdasdhgfffgjhiuiuihjjidfffffffffffguiu asre not lddded iddn</p>
+          <p>KKKKSSSSWUDJJFSHUSFFHUJIOJIODS2er2dddAASSSSSSaaaaaasdasdhgfffgjhiuiuihjjidfffffffffffguiu asre not lddded iddn</p>
           <button onClick={() => keycloak.login()}>Login</button>
           </>
         )}

@@ -13,8 +13,10 @@ services:
 
   backend-posts:
     build: ./backend-posts
+    volumes:
+      - ./backend-posts:/app
     ports:
-      - "5001:5001"
+      - "5001:5000"
     depends_on:
       - mysql
     environment:
@@ -22,6 +24,10 @@ services:
       MYSQL_USER: root
       MYSQL_PASSWORD: rootpassword
       MYSQL_DB: quizdb
+      FLASK_ENV: development
+      FLASK_APP: app.py
+      FLASK_DEBUG: 1
+    command: flask run --host=0.0.0.0 --port=5000
     networks:
       - quiz-net
 
