@@ -2,10 +2,11 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY package*.json package-lock.json* ./
+
 RUN npm install
 
-# Kod będzie podmontowany przez volume, więc nie kopiujemy reszty
+COPY . .
 
 EXPOSE 3000
 

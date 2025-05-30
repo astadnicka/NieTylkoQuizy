@@ -24,4 +24,14 @@ CREATE TABLE IF NOT EXISTS options (
     FOREIGN KEY (question_id) REFERENCES questions(id)
 );
 
-INSERT INTO categories (name) VALUES ('Horoskop'), ('Quiz'), ('Zdrapka');
+INSERT INTO categories (name) VALUES ('Horoskop'), ('Quiz'), ('Głosowanie');
+-- Przykładowy quiz
+INSERT INTO quizzes (title, category_id) VALUES ('Quiz o zwierzętach', 2);
+
+-- Zakładamy: quiz_id = 1
+INSERT INTO questions (question_text, quiz_id) VALUES ('Jakie zwierzę miauczy?', 1);
+INSERT INTO questions (question_text, quiz_id) VALUES ('Które zwierzę ma trąbę?', 1);
+
+-- Zakładamy: question_id = 1 i 2
+INSERT INTO options (option_text, question_id) VALUES ('Kot', 1), ('Pies', 1), ('Krowa', 1);
+INSERT INTO options (option_text, question_id) VALUES ('Słoń', 2), ('Koń', 2), ('Świnia', 2);

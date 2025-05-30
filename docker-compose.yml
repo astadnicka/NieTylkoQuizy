@@ -11,8 +11,10 @@ services:
     networks:
       - quiz-net
 
-  backend:
-    build: ./backend
+  backend-posts:
+    build: ./backend-posts
+    ports:
+      - "5001:5001"
     depends_on:
       - mysql
     environment:
@@ -20,23 +22,31 @@ services:
       MYSQL_USER: root
       MYSQL_PASSWORD: rootpassword
       MYSQL_DB: quizdb
+    networks:
+      - quiz-net
+
+  backend-users:
+    build: ./backend-users
     ports:
-      - "5000:5000"
+      - "5002:5002"
     networks:
       - quiz-net
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
+    build: ./frontend
     ports:
       - "3000:3000"
     volumes:
-      - ./frontend:/app:cached       # podmontuj kod z hosta
-      - /app/node_modules            # node_modules z kontenera
-    command: npm run dev             # uruchom w trybie deweloperskim z hot reloadem
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true 
+    command: npm run dev
     depends_on:
-      - backend
+      - backend-posts
+      - backend-users
     networks:
       - quiz-net
 
