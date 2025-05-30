@@ -5,9 +5,14 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: quizdb
+
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./db:/docker-entrypoint-initdb.d/:ro
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+
+    ports:
+      - "3306:3306"
     networks:
       - quiz-net
 
@@ -30,6 +35,7 @@ services:
     command: flask run --host=0.0.0.0 --port=5000
     networks:
       - quiz-net
+    restart: unless-stopped
 
   backend-users:
     build: ./backend-users

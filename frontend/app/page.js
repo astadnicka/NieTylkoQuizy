@@ -1,28 +1,30 @@
 'use client';
 
 import { useKeycloak } from '@react-keycloak/web';
+import Link from 'next/link';
+import QuizzesList from './components/QuizzesList';
 
 export default function HomePage() {
   const { keycloak, initialized } = useKeycloak();
 
   if (!initialized) return <p>Ładowanie...</p>;
 
-
   return (
-    <div className="App">
-      <header className="App-header">
+    <div className="p-6">
+      <nav className="flex justify-end mb-6">
         {keycloak.authenticated ? (
-          <>
-            <p>2322Wessldeece, {keycloak.tokenParsed?.preferred_username}!</p>
-            <button onClick={() => keycloak.logout()}>Logout</button>
-          </>
-        ):(
-          <>
-          <p>KKKKSSSSWUDJJFSHUSFFHUJIOJIODS2er2dddAASSSSSSaaaaaasdasdhgfffgjhiuiuihjjidfffffffffffguiu asre not lddded iddn</p>
-          <button onClick={() => keycloak.login()}>Login</button>
-          </>
+          <button onClick={() => keycloak.logout()}>Wyloguj</button>
+        ) : (
+          <button onClick={() => keycloak.login()}>Zaloguj</button>
         )}
-      </header>
+      </nav>
+
+      <h1 className="text-2xl font-bold mb-4 text-center">Najnowsze Quizy</h1>
+      <QuizzesList limit={3} />
+
+      <div className="mt-6 text-center">
+        <Link href="/quizzes" className="text-blue-600 underline">Zobacz wszystkie quizy</Link>
+      </div>
     </div>
   );
 }
