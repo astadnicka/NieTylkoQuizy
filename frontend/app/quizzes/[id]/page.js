@@ -1,85 +1,84 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 
+// Importy komponentów dla różnych kategorii
+import QuizComponent from '../../components/QuizComponent';
+import HoroscopeComponent from '../../components/HoroscopeComponent';
+import PollComponent from '../../components/PollComponent';
+
 export default function QuizPage() {
-  const { id } = useParams();
+  const params = useParams();
+  const quizId = params.id;
+  
   const [quiz, setQuiz] = useState(null);
-  const [selectedAnswers, setSelectedAnswers] = useState({});
-  const [showResults, setShowResults] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch(`http://localhost:5001/quizzes/${id}`)
-      .then((res) => res.json())
-      .then((data) => setQuiz(data))
-      .catch((err) => console.error('Błąd pobierania quizu:', err));
-  }, [id]);
-
-  const handleOptionClick = (questionId, optionId) => {
-    if (selectedAnswers[questionId] !== undefined) return; 
-
-    setSelectedAnswers((prev) => ({
-      ...prev,
-      [questionId]: optionId,
-    }));
-  };
-
-  const calculateScore = () => {
-    if (!quiz) return 0;
-    let correctCount = 0;
-    quiz.questions.forEach((q) => {
-      const selectedId = selectedAnswers[q.id];
-      const correct = q.options.find((opt) => opt.is_correct);
-      if (correct && selectedId === correct.id) {
-        correctCount++;
+    const fetchQuiz = async () => {
+      try {
+        const response = await fetch(`http://localhost:5001/quizzes/${quizId}`);
+        if (!response.ok) {
+          throw new Error('Quiz nie został znaleziony');
+        }
+        const data = await response.json();
+        setQuiz(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
       }
-    });
-    return correctCount;
+    };
+
+    if (quizId) {
+      fetchQuiz();
+    }
+  }, [quizId]);
+
+  const renderQuizComponent = () => {
+    if (!quiz) return null;
+
+    const category = quiz.category.toLowerCase();
+
+    switch (category) {
+      case 'horoscope':
+        return <HoroscopeComponent quiz={quiz} />;
+      case 'poll':
+        return <PollComponent quiz={quiz} />;
+      case 'quiz':
+      default:
+        return <QuizComponent quiz={quiz} />;
+    }
   };
 
-  if (!quiz) return <p>Ładowanie...</p>;
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
-  const allAnswered = quiz.questions.length === Object.keys(selectedAnswers).length;
+  if (error) {
+    return (
+      <div className="p-6 text-center">
+        <h1 className="text-2xl font-bold text-red-600 mb-4">Błąd</h1>
+        <p className="text-gray-600">{error}</p>
+        <button 
+          onClick={() => window.history.back()}
+          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          Wróć
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">{quiz.title}</h1>
-      {quiz.questions.map((question) => (
-        <div key={question.id} className="mb-6">
-          <h2 className="font-semibold mb-2">{question.text}</h2>
-          <div className="flex flex-col gap-2">
-            {question.options.map((option) => {
-              const isSelected = selectedAnswers[question.id] === option.id;
-              const isCorrect = option.is_correct;
-              const wasAnswered = selectedAnswers[question.id] !== undefined;
-
-              let bgColor = 'bg-white';
-              if (wasAnswered) {
-                if (isSelected && isCorrect) bgColor = 'bg-green-300';
-                else if (isSelected && !isCorrect) bgColor = 'bg-red-300';
-                else if (isCorrect) bgColor = 'bg-green-100';
-              }
-
-              return (
-                <button
-                  key={option.id}
-                  onClick={() => handleOptionClick(question.id, option.id)}
-                  className={`p-2 rounded border ${bgColor} cursor-pointer text-left`}
-                >
-                  {option.text}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ))}
-
-      {allAnswered && (
-        <div className="mt-6 text-xl font-semibold text-center">
-          Twój wynik: {calculateScore()} / {quiz.questions.length}
-        </div>
-      )}
+    <div className="min-h-screen bg-gray-50">
+      {renderQuizComponent()}
     </div>
   );
 }

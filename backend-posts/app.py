@@ -5,12 +5,19 @@ import config
 from routes import register_routes
 
 app = Flask(__name__)
-# CORS(app)
 CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
 
 app.config.from_object(config)
 
-mysql.init_app(app)  
+app.config['MYSQL_DATABASE_CHARSET'] = 'utf8mb4'
+app.config['MYSQL_DATABASE_USE_UNICODE'] = True
+app.config['MYSQL_INIT_COMMAND'] = "SET NAMES 'utf8mb4' COLLATE 'utf8mb4_polish_ci'"
+
+mysql.init_app(app)
+
+with app.app_context():
+    cursor = mysql.connection.cursor()
+    cursor.close()
 
 register_routes(app)
 

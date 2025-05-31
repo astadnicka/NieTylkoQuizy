@@ -1,30 +1,55 @@
+# -*- coding: utf-8 -*-
+
 from flask import Blueprint, jsonify, request
 from extensions import mysql
 
 quizzes_bp = Blueprint('quizzes', __name__)
 
+
+
 @quizzes_bp.route('/', methods=['GET'])
 def get_quizzes():
     cursor = mysql.connection.cursor()
+    cursor.execute("SET NAMES utf8mb4 COLLATE utf8mb4_polish_ci;")
+
     
     limit = request.args.get('limit', default=None, type=int)
 
     if limit:
-        cursor.execute("SELECT id, title FROM quizzes ORDER BY id DESC LIMIT %s", (limit,))
+        cursor.execute("""
+            SELECT q.id, q.title, c.name AS category
+            FROM quizzes q
+            JOIN categories c ON q.category_id = c.id
+            ORDER BY q.id DESC
+            LIMIT %s
+        """, (limit,))
     else:
-        cursor.execute("SELECT id, title FROM quizzes ORDER BY id DESC")
+        cursor.execute("""
+            SELECT q.id, q.title, c.name AS category
+            FROM quizzes q
+            JOIN categories c ON q.category_id = c.id
+            ORDER BY q.id DESC
+        """)
 
     rows = cursor.fetchall()
-    quizzes = [{'id': row[0], 'title': row[1]} for row in rows]
+    quizzes = [{'id': row[0], 'title': row[1], 'category': row[2]} for row in rows]
     cursor.close()
     return jsonify(quizzes)
+
 
 @quizzes_bp.route('/<int:quiz_id>')
 def get_quiz_by_id(quiz_id):
     cur = mysql.connection.cursor()
+    cur.execute("SET NAMES utf8mb4 COLLATE utf8mb4_polish_ci;")
 
-    # Pobierz quiz
-    cur.execute("SELECT id, title FROM quizzes WHERE id = %s", (quiz_id,))
+
+    # Pobierz quiz z nazwą kategorii
+    cur.execute("""
+        SELECT q.id, q.title, c.name AS category_name
+        FROM quizzes q
+        JOIN categories c ON q.category_id = c.id
+        WHERE q.id = %s
+    """, (quiz_id,))
     quiz_row = cur.fetchone()
     if not quiz_row:
         return jsonify({'error': 'Quiz not found'}), 404
@@ -32,6 +57,7 @@ def get_quiz_by_id(quiz_id):
     quiz = {
         'id': quiz_row[0],
         'title': quiz_row[1],
+        'category': quiz_row[2],
         'questions': []
     }
 
@@ -47,13 +73,18 @@ def get_quiz_by_id(quiz_id):
             'options': []
         }
 
-        # Pobierz opcje z informacją, która jest poprawna
-        cur.execute("SELECT id, option_text, is_correct FROM options WHERE question_id = %s", (question_id,))
+        # Pobierz opcje (z is_correct, tylko jeśli to quiz)
+        cur.execute("""
+            SELECT id, option_text, is_correct
+            FROM options
+            WHERE question_id = %s
+        """, (question_id,))
         options = cur.fetchall()
+
         question['options'] = [
             {'id': opt[0], 'text': opt[1], 'is_correct': bool(opt[2])}
             for opt in options
-]
+        ]
 
         quiz['questions'].append(question)
 
