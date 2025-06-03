@@ -1,9 +1,23 @@
--- Ustawienie domyślnego kodowania dla bazy (jeśli tworzysz ją ręcznie):
-CREATE DATABASE IF NOT EXISTS twoja_baza
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_polish_ci;
+-- Tworzenie baz danych
+CREATE DATABASE IF NOT EXISTS quizdb CHARACTER SET utf8mb4 COLLATE utf8mb4_polish_ci;
+CREATE DATABASE IF NOT EXISTS keycloak CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- Przykład z kategoriami:
+-- Tworzenie uzytkownikow
+CREATE USER IF NOT EXISTS 'keycloak'@'%' IDENTIFIED BY 'keycloak';
+CREATE USER IF NOT EXISTS 'quizuser'@'%' IDENTIFIED BY 'quizpassword';
+
+-- Nadawanie uprawnien
+GRANT ALL PRIVILEGES ON keycloak.* TO 'keycloak'@'%';
+GRANT ALL PRIVILEGES ON quizdb.* TO 'root'@'%';
+GRANT ALL PRIVILEGES ON quizdb.* TO 'quizuser'@'%';
+FLUSH PRIVILEGES;
+
+-- Wybierz baze danych do dalszych operacji
+USE quizdb;
+
+
+
+-- Przyklad z kategoriami:
 CREATE TABLE IF NOT EXISTS categories (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_polish_ci NOT NULL
@@ -14,6 +28,8 @@ CREATE TABLE IF NOT EXISTS quizzes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_polish_ci NOT NULL,
     category_id INT,
+    author_id VARCHAR(255),
+    author_username VARCHAR(255),
     FOREIGN KEY (category_id) REFERENCES categories(id)
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_polish_ci;
 
@@ -56,11 +72,11 @@ INSERT INTO quizzes (title, category_id) VALUES ('Docker i konteneryzacja', 2); 
 INSERT INTO questions (question_text, quiz_id) VALUES
   ('Czym jest Docker?', 2),
   ('Co to jest obraz (image) Dockera?', 2),
-  ('Która komenda tworzy kontener?', 2),
-  ('Do czego służy plik Dockerfile?', 2),
-  ('Jak uruchomić kontener w tle?', 2),
+  ('Ktora komenda tworzy kontener?', 2),
+  ('Do czego sluzy plik Dockerfile?', 2),
+  ('Jak uruchomic kontener w tle?', 2),
   ('Co robi `docker-compose up`?', 2),
-  ('Jak sprawdzić aktywne kontenery?', 2),
+  ('Jak sprawdzic aktywne kontenery?', 2),
   ('Co to jest wolumen (volume)?', 2);
 
 -- Opcje
@@ -70,7 +86,7 @@ INSERT INTO options (option_text, question_id, is_correct) VALUES
   ('Edytor tekstu', 3, FALSE),
 
   ('Zrzut stanu kontenera', 4, FALSE),
-  ('Szablon do tworzenia kontenerów', 4, TRUE),
+  ('Szablon do tworzenia kontenerow', 4, TRUE),
   ('Obiekt w bazie danych', 4, FALSE),
 
   ('docker build', 5, FALSE),
@@ -78,8 +94,8 @@ INSERT INTO options (option_text, question_id, is_correct) VALUES
   ('docker start', 5, FALSE),
 
   ('Do opisu sieci', 6, FALSE),
-  ('Do konfigurowania kontenerów w YAML', 6, FALSE),
-  ('Do definiowania jak zbudować obraz', 6, TRUE),
+  ('Do konfigurowania kontenerow w YAML', 6, FALSE),
+  ('Do definiowania jak zbudowac obraz', 6, TRUE),
 
   ('docker run -d', 7, TRUE),
   ('docker start -b', 7, FALSE),
@@ -93,66 +109,69 @@ INSERT INTO options (option_text, question_id, is_correct) VALUES
   ('docker ps', 9, TRUE),
   ('docker logs', 9, FALSE),
 
-  ('Trwały obszar danych współdzielony z kontenerem', 10, TRUE),
+  ('Trwaly obszar danych wspoldzielony z kontenerem', 10, TRUE),
   ('Typ obrazu Dockera', 10, FALSE),
-  ('Proces działający w tle', 10, FALSE);
+  ('Proces dzialajacy w tle', 10, FALSE);
 
 
 -- Quiz horoskopowy
-INSERT INTO quizzes (title, category_id) VALUES ('Twój horoskop dzienny', 1); -- quiz_id = 3
+INSERT INTO quizzes (title, category_id) VALUES ('Twoj horoskop dzienny', 1); -- quiz_id = 3
 
 -- Pytania i opcje horoskopowe
 INSERT INTO questions (question_text, quiz_id) VALUES
-  ('Baran: Dziś energia Cię nie opuści. Czas na działanie!', 3),
-  ('Byk: Stabilność jest dziś Twoim sprzymierzeńcem.', 3),
-  ('Bliźnięta: Komunikacja będzie kluczowa.', 3),
-  ('Rak: Postaw dziś na bliskich i emocje.', 3),
-  ('Lew: Czas błyszczeć! Pokaż swoją siłę.', 3),
-  ('Panna: Uporządkuj przestrzeń wokół siebie.', 3),
+  ('Baran: Dzis energia Cie nie opusci. Czas na dzialanie!', 3),
+  ('Byk: Stabilnosc jest dzis Twoim sprzymierzeńcem.', 3),
+  ('Bliznieta: Komunikacja bedzie kluczowa.', 3),
+  ('Rak: Postaw dzis na bliskich i emocje.', 3),
+  ('Lew: Czas blyszczec! Pokaz swoja sile.', 3),
+  ('Panna: Uporzadkuj przestrzen wokol siebie.', 3),
   ('Waga: Szukaj balansu w relacjach.', 3),
-  ('Skorpion: Tajemnice dziś wychodzą na jaw.', 3),
-  ('Strzelec: Czas na przygodę i odkrywanie.', 3),
-  ('Koziorozec: Ambicja dziś Ci sprzyja.', 3),
-  ('Wodnik: Zaskocz wszystkich kreatywnością.', 3),
-  ('Ryby: Intuicja poprowadzi Cię właściwie.', 3);
+  ('Skorpion: Tajemnice dzis wychodza na jaw.', 3),
+  ('Strzelec: Czas na przygode i odkrywanie.', 3),
+  ('Koziorozec: Ambicja dzis Ci sprzyja.', 3),
+  ('Wodnik: Zaskocz wszystkich kreatywnoscia.', 3),
+  ('Ryby: Intuicja poprowadzi Cie wlasciwie.', 3);
 
--- Opcje (jedna „dummy” opcja per znak – tylko do wyświetlenia)
+-- Opcje (jedna „dummy" opcja per znak – tylko do wyswietlenia)
 INSERT INTO options (option_text, question_id, is_correct) VALUES
-  ('Zobacz swoją wróżbę!', 11, TRUE),
-  ('Zobacz swoją wróżbę!', 12, TRUE),
-  ('Zobacz swoją wróżbę!', 13, TRUE),
-  ('Zobacz swoją wróżbę!', 14, TRUE),
-  ('Zobacz swoją wróżbę!', 15, TRUE),
-  ('Zobacz swoją wróżbę!', 16, TRUE),
-  ('Zobacz swoją wróżbę!', 17, TRUE),
-  ('Zobacz swoją wróżbę!', 18, TRUE),
-  ('Zobacz swoją wróżbę!', 19, TRUE),
-  ('Zobacz swoją wróżbę!', 20, TRUE),
-  ('Zobacz swoją wróżbę!', 21, TRUE),
-  ('Zobacz swoją wróżbę!', 22, TRUE);
+  ('Zobacz swoja wrozbe!', 11, TRUE),
+  ('Zobacz swoja wrozbe!', 12, TRUE),
+  ('Zobacz swoja wrozbe!', 13, TRUE),
+  ('Zobacz swoja wrozbe!', 14, TRUE),
+  ('Zobacz swoja wrozbe!', 15, TRUE),
+  ('Zobacz swoja wrozbe!', 16, TRUE),
+  ('Zobacz swoja wrozbe!', 17, TRUE),
+  ('Zobacz swoja wrozbe!', 18, TRUE),
+  ('Zobacz swoja wrozbe!', 19, TRUE),
+  ('Zobacz swoja wrozbe!', 20, TRUE),
+  ('Zobacz swoja wrozbe!', 21, TRUE),
+  ('Zobacz swoja wrozbe!', 22, TRUE);
 
 
 
--- Głosowanie
-INSERT INTO quizzes (title, category_id) VALUES ('Co byś wolał?', 3); -- quiz_id = 4
+-- Glosowanie
+INSERT INTO quizzes (title, category_id) VALUES ('Co bys wolal?', 3); -- quiz_id = 4
 
 -- Pytanie
 INSERT INTO questions (question_text, quiz_id) VALUES
-  ('Co byś wolał na uczelni?', 4),
-  ('W której sytuacji wolisz być?', 4),
-  ('Jak spędzić idealny dzień?', 4),
-  ('Jaką stosujesz rutynę?', 4);
+  ('Co bys wolal na uczelni?', 4),
+  ('W ktorej sytuacji wolisz byc?', 4),
+  ('Jak spedzic idealny dzien?', 4),
+  ('Jaka stosujesz rutyne?', 4);
 
 -- Opcje (pytanie_id = 23, 24, 25)
 INSERT INTO options (option_text, question_id) VALUES
-  ('Zdalne zajęcia cały semestr', 23),
+  ('Zdalne zajecia caly semestr', 23),
   ('Fizycznie, ale tylko 2 dni w tygodniu', 23),
 
-  ('Nie mieć projektó, ale same egzaminy', 24),
-  ('Nie mieć egzaminów, ale dużo projektów', 24),
+  ('Nie miec projektow, ale same egzaminy', 24),
+  ('Nie miec egzaminow, ale duzo projektow', 24),
 
-  ('Spać do 12 i grać w gry', 25),
-  ('Wycieczka ze znajomymi i piwo na plaży', 25),
+  ('Spac do 12 i grac w gry', 25),
+  ('Wycieczka ze znajomymi i piwo na plazy', 25),
 
-  ('Wstawać rano, iść spać wcześnie (poranny ptaszek) ', 26),
-  ('Spać do późna, zostawać po nocy (nocny marek)', 26);
+  ('Wstawac rano, isc spac wczesnie (poranny ptaszek) ', 26),
+  ('Spac do pozna, zostawac po nocy (nocny marek)', 26);
+
+ALTER TABLE quizzes
+ADD COLUMN created_by VARCHAR(255);  -- UUID z Keycloak (sub z tokena)

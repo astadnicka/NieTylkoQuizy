@@ -1,16 +1,17 @@
-FROM python:3.10-slim
+# Dockerfile
+FROM python:3.11-slim
 
-RUN apt-get update && apt-get install -y \
-    default-libmysqlclient-dev \
-    gcc \
-    python3-dev \
-    && rm -rf /var/lib/apt/lists/*
-
+# Ustawienie katalogu roboczego
 WORKDIR /app
 
+# Kopiuj wymagane pliki
 COPY requirements.txt .
+
+# Instalacja zależności
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Kopiuj resztę projektu
 COPY . .
 
-CMD ["python", "app.py"]
+# Ustawienie komendy startowej
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "5002"]

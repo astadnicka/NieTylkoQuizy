@@ -2,16 +2,15 @@
 
 from flask import Blueprint, jsonify, request
 from extensions import mysql
+from flask_cors import cross_origin
 
 quizzes_bp = Blueprint('quizzes', __name__)
 
-
-
+# Endpoint do pobierania quizów (GET)
 @quizzes_bp.route('/', methods=['GET'])
 def get_quizzes():
     cursor = mysql.connection.cursor()
     cursor.execute("SET NAMES utf8mb4 COLLATE utf8mb4_polish_ci;")
-
     
     limit = request.args.get('limit', default=None, type=int)
 
@@ -90,3 +89,4 @@ def get_quiz_by_id(quiz_id):
 
     cur.close()
     return jsonify(quiz)
+

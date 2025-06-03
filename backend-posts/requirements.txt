@@ -2,3 +2,5 @@ Flask
 pymysql
 flask-mysqldb
 flask-cors
+flask-jwt-extended
+PyJWT
