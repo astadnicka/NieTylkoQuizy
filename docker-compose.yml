@@ -1,4 +1,4 @@
-version: '3.9'
+# version: '3.9'
 services:
   mysql:
     image: mysql:8
@@ -16,7 +16,7 @@ services:
       - quiz-net
 
   backend-posts:
-    image: myuser/backend-posts:latest
+    image: stadnicka/backend-posts:latest
 
     volumes:
       - ./backend-posts:/app
@@ -32,13 +32,16 @@ services:
       FLASK_ENV: ${FLASK_ENV}
       FLASK_APP: ${FLASK_APP}
       FLASK_DEBUG: ${FLASK_DEBUG}
-    command: flask run --host=0.0.0.0 --port=5000
+    command: python -m flask run --host=0.0.0.0 --port=5000
+
     networks:
       - quiz-net
     restart: unless-stopped
 
   backend-users:
-    image: myuser/backend-users:latest
+    image: stadnicka/backend-users:latest
+    command: python -m uvicorn app:app --host 0.0.0.0 --port 5002
+
     ports:
       - "${BACKEND_USERS_PORT}:5002"
     environment:
@@ -56,7 +59,7 @@ services:
       - quiz-net
 
   frontend:
-    image: myuser/frontend:latest
+    image: stadnicka/frontend:latest
     ports:
       - "${FRONTEND_PORT}:3000"
     volumes:

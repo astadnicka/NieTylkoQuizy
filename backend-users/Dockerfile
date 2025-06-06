@@ -1,17 +1,17 @@
-# Dockerfile
-FROM python:3.11-slim
+FROM --platform=$BUILDPLATFORM python:3.11-slim AS builder
 
-# Ustawienie katalogu roboczego
 WORKDIR /app
-
-# Kopiuj wymagane pliki
 COPY requirements.txt .
 
-# Instalacja zależności
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --target=/install -r requirements.txt
 
-# Kopiuj resztę projektu
+FROM --platform=$TARGETPLATFORM python:3.11-slim AS app
+
+WORKDIR /app
+
+COPY --from=builder /install /usr/local/lib/python3.11/site-packages/
 COPY . .
 
-# Ustawienie komendy startowej
+EXPOSE 5002
+
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "5002"]
