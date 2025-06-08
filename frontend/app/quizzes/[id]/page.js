@@ -22,7 +22,13 @@ export default function QuizPage() {
   useEffect(() => {
     const fetchQuiz = async () => {
       try {
-        const response = await fetch(`http://localhost:5001/quizzes/${quizId}`);
+        // Dodaj nagłówek Authorization, aby backend mógł zidentyfikować autora
+        const headers = {};
+        if (keycloak?.authenticated) {
+          headers['Authorization'] = `Bearer ${keycloak.token}`;
+        }
+        
+        const response = await fetch(`http://localhost:5001/quizzes/${quizId}`, { headers });
         if (!response.ok) {
           throw new Error('Quiz nie został znaleziony');
         }
@@ -39,7 +45,7 @@ export default function QuizPage() {
     if (quizId) {
       fetchQuiz();
     }
-  }, [quizId]);
+  }, [quizId, keycloak?.authenticated, keycloak?.token]);
 
   // Sprawdź czy zalogowany użytkownik jest autorem quizu lub adminem
   const isAuthor = quiz?.created_by && keycloak?.authenticated && 
@@ -48,7 +54,9 @@ export default function QuizPage() {
   const isAdmin = keycloak?.authenticated && 
                   keycloak.tokenParsed?.realm_access?.roles.includes('admin');
   
-  const canModify = isAuthor || isAdmin;
+  // Admin może tylko usuwać, autor może edytować i usuwać
+  const canDelete = isAuthor || isAdmin;
+  const canEdit = isAuthor;
 
   const renderQuizComponent = () => {
     if (!quiz) return null;
@@ -113,6 +121,13 @@ export default function QuizPage() {
               </div>
             )}
             
+            {/* Informacja o roli (tylko podczas dev) */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="mr-6 mb-2 text-xs text-gray-400">
+                {isAdmin ? 'Admin' : ''} {isAuthor ? 'Autor' : ''}
+              </div>
+            )}
+            
             {/* Data utworzenia, jeśli dostępna */}
             {quiz.created_at && (
               <div className="mb-2">
@@ -121,15 +136,20 @@ export default function QuizPage() {
             )}
           </div>
           
-          {/* Przyciski edycji/usuwania tylko dla autora lub admina */}
-          {canModify && (
-            <div className="flex space-x-3 mt-4">
+          {/* Przyciski akcji z różnymi uprawnieniami */}
+          <div className="flex space-x-3 mt-4">
+            {/* Przycisk edycji - tylko dla autora */}
+            {/* {canEdit && (
               <Link 
                 href={`/quizzes/${quizId}/edit`}
                 className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
               >
                 Edytuj quiz
               </Link>
+            )} */}
+            
+            {/* Przycisk usuwania - dla autora i admina */}
+            {canDelete && (
               <button 
                 onClick={async () => {
                   if (window.confirm('Czy na pewno chcesz usunąć ten quiz?')) {
@@ -156,8 +176,8 @@ export default function QuizPage() {
               >
                 Usuń quiz
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
       
