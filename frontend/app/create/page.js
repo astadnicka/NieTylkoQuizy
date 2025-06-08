@@ -216,37 +216,40 @@ export default function CreateQuizPage() {
   // Przygotuj payload zgodnie z bazą
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!keycloak.authenticated) {
       alert('Musisz być zalogowany, aby utworzyć quiz!');
       keycloak.login();
       return;
     }
-    
+
     // Walidacja podstawowa
     if (!title.trim()) {
       alert('Tytuł jest wymagany!');
       return;
     }
-    
+
     // Walidacja pytań
     if (questions.length === 0) {
       alert('Dodaj przynajmniej jedno pytanie!');
       return;
     }
-    
+
     // Ustawienie stanu wysyłania na true
     setIsSubmitting(true);
-    
+
     // Przygotuj pytania w odpowiednim formacie
     let formattedQuestions = [];
-    
+
     try {
       if (categoryId === 1) {
-        // Horoskop - pytania bez opcji
-        formattedQuestions = questions.map(q => ({
-          question_text: `${q.sign}: ${q.question_text}`
-        }));
+        // Horoskop - pytania z jedną opcją (wymagane przez backend)
+        formattedQuestions = questions
+          .filter(q => q.question_text && q.question_text.trim())
+          .map(q => ({
+            question_text: `${q.sign}: ${q.question_text}`,
+            options: [{ option_text: "Zobacz swoją wróżbę!", is_correct: true }]
+          }));
       } else if (categoryId === 2 || categoryId === 3) {
         // Quiz lub ankieta - pytania z opcjami
         formattedQuestions = questions.map(q => {
@@ -254,16 +257,16 @@ export default function CreateQuizPage() {
           if (!q.question_text?.trim()) {
             throw new Error('Wszystkie pytania muszą mieć treść!');
           }
-          
+
           if (!q.options || q.options.length < 2) {
             throw new Error('Każde pytanie musi mieć co najmniej dwie opcje!');
           }
-          
+
           // Dla quizów sprawdź, czy jest zaznaczona poprawna odpowiedź
           if (categoryId === 2 && !q.options.some(opt => opt.is_correct)) {
             throw new Error('Każde pytanie w quizie musi mieć zaznaczoną poprawną odpowiedź!');
           }
-          
+
           return {
             question_text: q.question_text,
             options: q.options.map(opt => ({
@@ -273,16 +276,19 @@ export default function CreateQuizPage() {
           };
         });
       }
-      
+
       // Przygotuj payload
       const payload = {
         title,
         category_id: categoryId,
         questions: formattedQuestions
       };
-      
+
+      // Debugowanie
+      console.log('Sending payload:', JSON.stringify(payload));
+
       // Wyślij do API
-      const response = await fetch('http://localhost:5001/quizzes', {
+      const response = await fetch('http://localhost:5001/quizzes/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -290,21 +296,21 @@ export default function CreateQuizPage() {
         },
         body: JSON.stringify(payload)
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Wystąpił błąd podczas zapisywania');
       }
-      
+
       const result = await response.json();
       console.log('Quiz created:', result);
-      
+
       // Pokaż komunikat o sukcesie
       alert(`Quiz "${title}" został pomyślnie utworzony!`);
-      
+
       // Przekieruj na stronę główną
       router.push('/');
-      
+
     } catch (error) {
       console.error('Error creating quiz:', error);
       alert(`Błąd: ${error.message}`);

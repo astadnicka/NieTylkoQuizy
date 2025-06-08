@@ -12,6 +12,11 @@ services:
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "${MYSQL_PORT}:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       - quiz-net
 
@@ -21,9 +26,10 @@ services:
     volumes:
       - ./backend-posts:/app
     ports:
-      - "${BACKEND_POSTS_PORT}:5000"
+      - "${BACKEND_POSTS_PORT}:5001"
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     environment:
       MYSQL_HOST: ${MYSQL_HOST}
       MYSQL_USER: ${MYSQL_USER_POSTS}
@@ -32,7 +38,7 @@ services:
       FLASK_ENV: ${FLASK_ENV}
       FLASK_APP: ${FLASK_APP}
       FLASK_DEBUG: ${FLASK_DEBUG}
-    command: python -m flask run --host=0.0.0.0 --port=5000
+    command: python -m flask run --host=0.0.0.0 --port=5001
 
     networks:
       - quiz-net

@@ -27,6 +27,7 @@ export default function QuizPage() {
           throw new Error('Quiz nie został znaleziony');
         }
         const data = await response.json();
+        console.log('Dane z API:', data);
         setQuiz(data);
       } catch (err) {
         setError(err.message);
@@ -41,8 +42,8 @@ export default function QuizPage() {
   }, [quizId]);
 
   // Sprawdź czy zalogowany użytkownik jest autorem quizu lub adminem
-  const isAuthor = quiz?.author_id && keycloak?.authenticated && 
-                  quiz.author_id === keycloak.tokenParsed?.sub;
+  const isAuthor = quiz?.created_by && keycloak?.authenticated && 
+                  quiz.created_by === keycloak.tokenParsed?.sub;
   
   const isAdmin = keycloak?.authenticated && 
                   keycloak.tokenParsed?.realm_access?.roles.includes('admin');
