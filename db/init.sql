@@ -1,29 +1,23 @@
--- Tworzenie baz danych
 CREATE DATABASE IF NOT EXISTS quizdb CHARACTER SET utf8mb4 COLLATE utf8mb4_polish_ci;
 CREATE DATABASE IF NOT EXISTS keycloak CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- Tworzenie uzytkownikow
 CREATE USER IF NOT EXISTS 'keycloak'@'%' IDENTIFIED BY 'keycloak';
 CREATE USER IF NOT EXISTS 'quizuser'@'%' IDENTIFIED BY 'quizpassword';
 
--- Nadawanie uprawnien
 GRANT ALL PRIVILEGES ON keycloak.* TO 'keycloak'@'%';
 GRANT ALL PRIVILEGES ON quizdb.* TO 'root'@'%';
 GRANT ALL PRIVILEGES ON quizdb.* TO 'quizuser'@'%';
 FLUSH PRIVILEGES;
 
--- Wybierz baze danych do dalszych operacji
 USE quizdb;
 
 
 
--- Przyklad z kategoriami:
 CREATE TABLE IF NOT EXISTS categories (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_polish_ci NOT NULL
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_polish_ci;
 
--- Tak samo dla reszty:
 CREATE TABLE IF NOT EXISTS quizzes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_polish_ci NOT NULL,
@@ -114,10 +108,8 @@ INSERT INTO options (option_text, question_id, is_correct) VALUES
   ('Proces dzialajacy w tle', 10, FALSE);
 
 
--- Quiz horoskopowy
 INSERT INTO quizzes (title, category_id) VALUES ('Twoj horoskop dzienny', 1); -- quiz_id = 3
 
--- Pytania i opcje horoskopowe
 INSERT INTO questions (question_text, quiz_id) VALUES
   ('Baran: Dzis energia Cie nie opusci. Czas na dzialanie!', 3),
   ('Byk: Stabilnosc jest dzis Twoim sprzymierzeńcem.', 3),
@@ -132,7 +124,6 @@ INSERT INTO questions (question_text, quiz_id) VALUES
   ('Wodnik: Zaskocz wszystkich kreatywnoscia.', 3),
   ('Ryby: Intuicja poprowadzi Cie wlasciwie.', 3);
 
--- Opcje (jedna „dummy" opcja per znak – tylko do wyswietlenia)
 INSERT INTO options (option_text, question_id, is_correct) VALUES
   ('Zobacz swoja wrozbe!', 11, TRUE),
   ('Zobacz swoja wrozbe!', 12, TRUE),
@@ -149,17 +140,14 @@ INSERT INTO options (option_text, question_id, is_correct) VALUES
 
 
 
--- Glosowanie
 INSERT INTO quizzes (title, category_id) VALUES ('Co bys wolal?', 3); -- quiz_id = 4
 
--- Pytanie
 INSERT INTO questions (question_text, quiz_id) VALUES
   ('Co bys wolal na uczelni?', 4),
   ('W ktorej sytuacji wolisz byc?', 4),
   ('Jak spedzic idealny dzien?', 4),
   ('Jaka stosujesz rutyne?', 4);
 
--- Opcje (pytanie_id = 23, 24, 25)
 INSERT INTO options (option_text, question_id) VALUES
   ('Zdalne zajecia caly semestr', 23),
   ('Fizycznie, ale tylko 2 dni w tygodniu', 23),
@@ -174,4 +162,4 @@ INSERT INTO options (option_text, question_id) VALUES
   ('Spac do pozna, zostawac po nocy (nocny marek)', 26);
 
 ALTER TABLE quizzes
-ADD COLUMN created_by VARCHAR(255);  -- UUID z Keycloak (sub z tokena)
+ADD COLUMN created_by VARCHAR(255);  

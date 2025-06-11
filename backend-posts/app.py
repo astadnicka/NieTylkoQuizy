@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask_cors import CORS
 from extensions import mysql  
 import config
@@ -19,7 +19,6 @@ app.config['MYSQL_DATABASE_CHARSET'] = 'utf8mb4'
 app.config['MYSQL_DATABASE_USE_UNICODE'] = True
 app.config['MYSQL_INIT_COMMAND'] = "SET NAMES 'utf8mb4' COLLATE 'utf8mb4_polish_ci'"
 
-# Próbuj połączyć się z bazą danych z ponawianiem
 max_retries = 30
 retry_interval = 2
 
@@ -41,6 +40,16 @@ for attempt in range(max_retries):
 
 register_routes(app)
 
+@app.route('/health')
+def health_check():
+    try:
+        cursor = mysql.connection.cursor()
+        cursor.execute('SELECT 1')
+        cursor.close()
+        return jsonify(status="healthy"), 200
+    except Exception as e:
+        return jsonify(status="unhealthy", error=str(e)), 500
+
 if __name__ == '__main__':
 
-    app.run(host='0.0.0.0', port=5001, debug=True)   
+    app.run(host='0.0.0.0', port=5001, debug=True)

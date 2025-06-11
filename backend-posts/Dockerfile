@@ -15,9 +15,12 @@ RUN pip install --no-cache-dir --target=/install -r requirements.txt \
 
 FROM --platform=$TARGETPLATFORM python:3.10-slim AS app
 
-# Instalacja tylko wymaganych bibliotek runtime
+ARG PORT=5001
+ENV PORT=${PORT}
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     default-libmysqlclient-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -25,6 +28,6 @@ WORKDIR /app
 COPY --from=builder /install /usr/local/lib/python3.10/site-packages/
 COPY . .
 
-EXPOSE 5001
+EXPOSE ${PORT}
 
-CMD ["flask", "run", "--host=0.0.0.0", "--port", "5001"]
+CMD ["flask", "run", "--host=0.0.0.0", "--port", "${PORT}"]

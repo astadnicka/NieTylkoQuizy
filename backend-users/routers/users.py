@@ -25,12 +25,11 @@ def verify_token(token: str = Depends(oauth2_scheme)):
         public_key = f"-----BEGIN PUBLIC KEY-----\n{public_key}\n-----END PUBLIC KEY-----"
         print(f"Formatted public key: {public_key}")
 
-        # Usuń weryfikację audience lub zrób ją opcjonalną
         decoded_token = jwt.decode(
             token,
             public_key,
             algorithms=["RS256"],
-            options={"verify_audience": False}  # Nie weryfikuj audience
+            options={"verify_audience": False}  
         )
         print(f"Decoded token: {decoded_token}")  
         return decoded_token
@@ -78,11 +77,9 @@ async def get_users(token_data: dict = Depends(verify_token)):
             'port': 3306
         }
         
-        # Połącz się z bazą keycloak
         mydb = mysql.connector.connect(**keycloak_db_config)
         mycursor = mydb.cursor()
         
-        # Pobierz ID realmu
         realm_query = "SELECT ID FROM REALM WHERE NAME = %s"
         mycursor.execute(realm_query, (KEYCLOAK_REALM,))
         realm_result = mycursor.fetchone()
@@ -94,7 +91,6 @@ async def get_users(token_data: dict = Depends(verify_token)):
         realm_id = realm_result[0]
         print(f"Found realm ID: {realm_id}")
         
-        # Pobierz użytkowników z określonego realm
         user_query = "SELECT * FROM USER_ENTITY WHERE REALM_ID = %s"
         mycursor.execute(user_query, (realm_id,))
         results = mycursor.fetchall()
@@ -105,7 +101,7 @@ async def get_users(token_data: dict = Depends(verify_token)):
             try:
                 user_data = {
                     "id": row[0], 
-                    "username": row[1],  # Indeksy mogą być inne niż w twoim oryginalnym kodzie
+                    "username": row[1],  
                     "email": row[2],
                     "first_name": row[3], 
                     "last_name": row[4]
@@ -118,11 +114,9 @@ async def get_users(token_data: dict = Depends(verify_token)):
         mycursor.close()
         mydb.close()
 
-        # Sprawdź role użytkownika z tokenu
         roles = token_data.get("realm_access", {}).get("roles", [])
     
         if "admin" in roles:
-            # Admin widzi wszystkie dane
             return [
                 {
                     "id": user["id"], 
@@ -136,7 +130,6 @@ async def get_users(token_data: dict = Depends(verify_token)):
                 for user in users
             ]
         else:
-            # Zwykły użytkownik widzi ograniczone dane
             return [
                 {
                     "username": user["username"],
@@ -149,18 +142,15 @@ async def get_users(token_data: dict = Depends(verify_token)):
         return [{"id": "1", "username": "admin (error fallback)"}]
 
 
-# Najpierw zdefiniuj konkretne ścieżki
 @router.get('/public')
 async def get_keycloak_users():
     """Pobiera użytkowników z Keycloak za pomocą API administracyjnego"""
     try:
         import requests
         
-        # Konfiguracja Keycloak
         keycloak_url = os.getenv("KEYCLOAK_URL", "http://keycloak:8080/")
         realm = os.getenv("KEYCLOAK_REALM", "NieTylkoQuizy")
         
-        # Najpierw uzyskaj token administratora
         admin_token_url = f"{keycloak_url}/realms/master/protocol/openid-connect/token"
         admin_data = {
             "username": "admin",

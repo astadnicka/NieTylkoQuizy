@@ -4,6 +4,8 @@ from routers import users as user
 import uvicorn
 import requests
 import os
+from sqlalchemy import create_engine, text
+from fastapi.responses import JSONResponse
 
 app = FastAPI()
 
@@ -24,8 +26,16 @@ async def root():
     return {"message": "users backend dziala"}
 
 @app.get("/health")
-async def health():
-    return {"status": "ok"}
+def health_check():
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+        return {"status": "healthy"}
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"status": "unhealthy", "error": str(e)}
+        )
 
 @app.get("/api/test-users")
 async def test_users():
@@ -38,11 +48,9 @@ async def test_users():
 async def get_all_users():
     """Prosty publiczny endpoint zwracający wszystkich użytkowników z Keycloak"""
     try:
-        # Konfiguracja Keycloak
         keycloak_url = os.getenv("KEYCLOAK_URL", "http://keycloak:8080/")
         realm = os.getenv("KEYCLOAK_REALM", "NieTylkoQuizy")
         
-        # Najpierw uzyskaj token administratora
         admin_token_url = f"{keycloak_url}/realms/master/protocol/openid-connect/token"
         admin_data = {
             "username": "admin",
@@ -60,7 +68,6 @@ async def get_all_users():
             
         admin_token = token_response.json().get("access_token")
         
-        # Pobierz użytkowników z realmu NieTylkoQuizy
         users_url = f"{keycloak_url}/admin/realms/NieTylkoQuizy/users"
         headers = {"Authorization": f"Bearer {admin_token}"}
         
@@ -74,7 +81,6 @@ async def get_all_users():
         users_data = users_response.json()
         print(f"Found {len(users_data)} users")
         
-        # Przekształć dane do oczekiwanego formatu
         users = [
             {
                 "id": user.get("id", ""),
