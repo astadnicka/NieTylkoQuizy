@@ -2,11 +2,11 @@
 services:
   mysql:
     image: mysql:8
-    # environment:
-      # - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      # - MYSQL_DATABASE=${MYSQL_DATABASE}
-      # - MYSQL_USER=${MYSQL_USER}
-      # - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
     volumes:
       - mysql_data:/var/lib/mysql
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -18,7 +18,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - quiz-net
+      - db-net
 
   backend-posts:
     image: stadnicka/backend-posts:latest
@@ -30,7 +30,7 @@ services:
       mysql:
         condition: service_healthy
     environment:
-      MYSQL_HOST: ${MYSQL_HOST}
+      MYSQL_HOST: mysql
       MYSQL_USER: ${MYSQL_USER_POSTS}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD_POSTS}
       MYSQL_DB: ${MYSQL_DATABASE}
@@ -45,7 +45,8 @@ services:
       retries: 3
       start_period: 60s
     networks:
-      - quiz-net
+      - db-net    
+      - api-net    
     restart: unless-stopped
 
   backend-users:
@@ -56,9 +57,9 @@ services:
     environment:
       - DB_USER=${MYSQL_USER_USERS}
       - DB_PASSWORD=${MYSQL_PASSWORD_USERS}
-      - DB_HOST=${MYSQL_HOST}
+      - DB_HOST=mysql
       - DB_NAME=${MYSQL_DATABASE}
-      - KEYCLOAK_URL=${KEYCLOAK_URL}
+      - KEYCLOAK_URL=http://keycloak:8080
       - KEYCLOAK_REALM=${KEYCLOAK_REALM}
       - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID}
     depends_on:
@@ -73,10 +74,12 @@ services:
       retries: 3
       start_period: 30s
     networks:
-      - quiz-net
+      - db-net     
+      - auth-net   
+      - api-net    
 
   frontend:
-    image: stadnicka/frontend:latest
+    image: stadnicka/frontend:dev
     ports:
       - "${FRONTEND_PORT}:3000"
     volumes:
@@ -93,7 +96,8 @@ services:
       backend-users:
         condition: service_healthy
     networks:
-      - quiz-net
+      - api-net    
+      - auth-net   
 
   keycloak:
     image: quay.io/keycloak/keycloak:${KEYCLOAK_VERSION}
@@ -101,7 +105,7 @@ services:
       - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN}
       - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
       - KC_DB=${KC_DB}
-      - KC_DB_URL_HOST=${MYSQL_HOST}
+      - KC_DB_URL_HOST=mysql
       - KC_DB_URL_DATABASE=${KC_DB_URL_DATABASE}
       - KC_DB_USERNAME=${KC_DB_USERNAME}
       - KC_DB_PASSWORD=${KC_DB_PASSWORD}
@@ -120,11 +124,17 @@ services:
       retries: 5
       start_period: 90s 
     networks:
-      - quiz-net
+      - db-net    
+      - auth-net   
 
 volumes:
   mysql_data:
   keycloak_data:
 
 networks:
-  quiz-net:
+  db-net:
+    driver: bridge
+  api-net:
+    driver: bridge
+  auth-net:
+    driver: bridge
