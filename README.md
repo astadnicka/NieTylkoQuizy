@@ -1,0 +1,2 @@
+Projekt przeniesiony na Kubernetes
+
