@@ -79,17 +79,17 @@ services:
       - api-net    
 
   frontend:
-    image: stadnicka/frontend:dev
+    image: stadnicka/frontend:latest
     ports:
       - "${FRONTEND_PORT}:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
-    environment:
-      - CHOKIDAR_USEPOLLING=${CHOKIDAR_USEPOLLING}
-      - WATCHPACK_POLLING=${WATCHPACK_POLLING}
-    command: npm run dev
+    # volumes:
+    #   - ./frontend:/app
+    #   - /app/node_modules
+    #   - /app/.next
+    # environment:
+    #   - CHOKIDAR_USEPOLLING=${CHOKIDAR_USEPOLLING}
+    #   - WATCHPACK_POLLING=${WATCHPACK_POLLING}
+    # command: npm run dev
     depends_on:
       backend-posts:
         condition: service_healthy

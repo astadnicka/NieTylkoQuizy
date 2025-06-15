@@ -1,31 +1,35 @@
-FROM node:18-alpine AS deps
-WORKDIR /app
-COPY package*.json ./
-COPY next.config.mjs ./
-COPY jsconfig.json ./
-COPY postcss.config.mjs ./
-RUN npm ci
+ARG NODE_VERSION=20-alpine
 
-# --- development ---
-FROM node:18-alpine AS dev
+FROM node:${NODE_VERSION} AS deps
 WORKDIR /app
-ENV NODE_ENV=development
+COPY package.json package-lock.json* ./
+RUN npm ci --prefer-offline --no-audit
+
+FROM node:${NODE_VERSION} AS builder
+WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/package*.json ./
-COPY --from=deps /app/next.config.mjs ./
-COPY --from=deps /app/jsconfig.json ./
-COPY --from=deps /app/postcss.config.mjs ./
+COPY . .
+RUN npm run build
+
+FROM node:${NODE_VERSION} AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+RUN apk add --no-cache gettext
+COPY --from=builder --chown=node:node /app/public ./public
+COPY --from=builder --chown=node:node /app/.next/standalone ./
+COPY --from=builder --chown=node:node /app/.next/static ./.next/static
+RUN mkdir -p .next/static && chown -R node:node .next public
+
+USER node
+EXPOSE 3000
+ENV HOSTNAME="0.0.0.0"
+ENV PORT=3000
+CMD ["node", "server.js"]
+
+FROM node:${NODE_VERSION} AS dev
+WORKDIR /app
+RUN apk add --no-cache gettext curl
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 EXPOSE 3000
 CMD ["npm", "run", "dev"]
-
-# --- produkcja ---
-FROM deps AS prod-static
-ENV NODE_ENV=production
-RUN npm run build
-FROM nginx:alpine AS static
-COPY --from=prod-static /app/out /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
-
