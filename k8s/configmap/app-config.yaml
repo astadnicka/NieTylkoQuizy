@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: nietylkoquizy
+data:
+  MYSQL_DATABASE: "quizdb"
+  MYSQL_USER: "keycloak"
+  DB_HOST: "mysql"
+  DB_PORT: "3306"
+  DB_USER_ROOT: "root"
+  DB_NAME_KEYCLOAK: "keycloak"
+  DB_USER_KEYCLOAK: "keycloak"
+  DB_NAME_POSTS: "quizdb"
+  DB_USER_POSTS: "root"
+  KEYCLOAK_VERSION: "21.1.1"
+  KEYCLOAK_URL: http://keycloak:8080
+  KEYCLOAK_REALM: NieTylkoQuizy
+  KEYCLOAK_CLIENT_ID: NieTylkoQuizyClient
+  KEYCLOAK_PORT: "8080"

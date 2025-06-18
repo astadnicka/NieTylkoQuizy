@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-cm
+  namespace: nietylkoquizy
+data:
+  KEYCLOAK_URL: http://keycloak:8080
+  KEYCLOAK_REALM: NieTylkoQuizy
+  KEYCLOAK_CLIENT_ID: NieTylkoQuizyClient
