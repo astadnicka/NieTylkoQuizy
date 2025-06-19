@@ -4,3 +4,12 @@ flask-mysqldb
 flask-cors
 flask-jwt-extended
 PyJWT
+redis
+requests
+python-keycloak
+python-keycloak
+Flask==2.3.3
+Flask-CORS==4.0.0
+Flask-MySQLdb==1.0.1
+jose
+

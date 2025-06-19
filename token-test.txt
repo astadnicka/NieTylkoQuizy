@@ -16,3 +16,8 @@ USER1_TOKEN=$(curl -s -X POST "http://localhost:8080/realms/NieTylkoQuizy/protoc
 
   curl -s -X GET "http://localhost:5002/api/users/" \
   -H "Authorization: Bearer $USER1_TOKEN" | jq
+
+  curl -s -w "\nHTTP:%{http_code}" \
+  -X POST "http://localhost:5002/api/users/logout" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json"
