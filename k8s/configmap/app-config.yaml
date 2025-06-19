@@ -18,3 +18,5 @@ data:
   KEYCLOAK_REALM: NieTylkoQuizy
   KEYCLOAK_CLIENT_ID: NieTylkoQuizyClient
   KEYCLOAK_PORT: "8080"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"

@@ -11,6 +11,25 @@ export default function HomePage() {
 
   const isAdmin = keycloak?.authenticated && keycloak?.tokenParsed?.realm_access?.roles.includes('admin');
 
+  const handleLogout = async () => {
+    try {
+      // Wyślij token do blacklisty
+      if (keycloak.token) {
+        await fetch('http://localhost:5002/api/users/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${keycloak.token}`
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error during logout:', error);
+    } finally {
+      // Wyloguj z Keycloak
+      keycloak.logout();
+    }
+  };
+
   return (
     <div className="p-6">
       <nav className="flex justify-between items-center mb-6">
@@ -20,8 +39,8 @@ export default function HomePage() {
             Quizzes
           </Link>
 
-          {/* Link do użytkowników - widoczny dla wszystkich zalogowanych */}
-          {keycloak.authenticated && (
+          {/* Link do użytkowników - tylko dla adminów */}
+          {isAdmin && (
             <Link href="/users" className="text-blue-600 hover:underline">
               Users
             </Link>
@@ -43,7 +62,7 @@ export default function HomePage() {
                 {keycloak.tokenParsed?.preferred_username || 'Użytkowniku'}!
               </span>
               <button
-                onClick={() => keycloak.logout()}
+                onClick={handleLogout}
                 className="bg-red-500 hover:bg-red-700 text-white py-1 px-3 rounded text-sm"
               >
                 Wyloguj

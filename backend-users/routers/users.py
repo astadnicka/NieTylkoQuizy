@@ -4,6 +4,7 @@ from keycloak import KeycloakOpenID
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt
 import os
+import redis
 
 KEYCLOAK_SERVER_URL = os.getenv("KEYCLOAK_URL", "http://keycloak:8080/")
 KEYCLOAK_REALM = os.getenv("KEYCLOAK_REALM", "NieTylkoQuizy")  
@@ -18,28 +19,82 @@ oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl=f"{KEYCLOAK_SERVER_URL}realms/{KEYCLOAK_REALM}/protocol/openid-connect/token"
 )
 
+# Redis configuration - prosty i bezpieczny
+try:
+    redis_host = os.getenv('REDIS_HOST', 'redis')
+    redis_port_str = os.getenv('REDIS_PORT', '6379')
+    
+    # Obsługa przypadku gdy REDIS_PORT może zawierać URL
+    if redis_port_str.startswith('tcp://'):
+        redis_port = int(redis_port_str.split(':')[-1])
+    else:
+        redis_port = int(redis_port_str)
+    
+    redis_client = redis.Redis(
+        host=redis_host,
+        port=redis_port,
+        decode_responses=True,
+        socket_connect_timeout=5,
+        socket_timeout=5
+    )
+    
+    # Test connection
+    redis_client.ping()
+    print(f"✅ Redis connected: {redis_host}:{redis_port}")
+    REDIS_AVAILABLE = True
+    
+except Exception as e:
+    print(f"❌ Redis connection failed: {e}")
+    print("Using local blacklist fallback")
+    REDIS_AVAILABLE = False
+    redis_client = None
+
+# Globalna blacklista tokenów (w produkcji użyj Redis)
+blacklisted_tokens = set()
+
+def blacklist_token(token: str):
+    """Dodaj token do blacklisty w Redis"""
+    try:
+        # Ustaw token na blackliście z TTL (czas życia tokenu)
+        redis_client.setex(f"blacklist:{token}", 3600, "blacklisted")  # 1 godzina
+        print(f"Token blacklisted in Redis: {token[:20]}...")
+    except Exception as e:
+        print(f"Error blacklisting token in Redis: {e}")
+
+def is_token_blacklisted(token: str) -> bool:
+    """Sprawdź czy token jest na blackliście w Redis"""
+    try:
+        result = redis_client.exists(f"blacklist:{token}")
+        print(f"Token blacklist check: {result}")
+        return bool(result)
+    except Exception as e:
+        print(f"Error checking blacklist in Redis: {e}")
+        return False
+
 def verify_token(token: str = Depends(oauth2_scheme)):
     try:
+        # SPRAWDŹ BLACKLISTĘ NAJPIERW
+        if is_token_blacklisted(token):
+            raise HTTPException(status_code=401, detail="Token blacklisted - user logged out")
+        
         public_key = KEYCLOAK_OPENID.public_key()
-        print(f"Raw public key: {public_key}")
         public_key = f"-----BEGIN PUBLIC KEY-----\n{public_key}\n-----END PUBLIC KEY-----"
-        print(f"Formatted public key: {public_key}")
 
         decoded_token = jwt.decode(
             token,
             public_key,
             algorithms=["RS256"],
-            options={"verify_audience": False}  
+            audience="account",  
+            options={"verify_exp": True}
         )
-        print(f"Decoded token: {decoded_token}")  
         return decoded_token
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
     except Exception as e:
-        print(f"Token verification error: {str(e)}")  
         raise HTTPException(status_code=401, detail=f"Token invalid: {str(e)}")
     
 def require_admin_user(token: dict = Depends(verify_token)):
     roles = token.get("realm_access", {}).get("roles", [])
-    print(f"User roles: {roles}")  # Debug roles
     if "admin" not in roles:
         raise HTTPException(status_code=403, detail="Admin role required")
     return token
@@ -67,7 +122,7 @@ def get_db_connection():
         raise HTTPException(status_code=500, detail="Database connection failed")
 
 @router.get('/')
-async def get_users(token_data: dict = Depends(verify_token)):
+async def get_users(token_data=Depends(require_admin_user)):
     try:
         keycloak_db_config = {
             'user': 'keycloak',         
@@ -91,7 +146,12 @@ async def get_users(token_data: dict = Depends(verify_token)):
         realm_id = realm_result[0]
         print(f"Found realm ID: {realm_id}")
         
-        user_query = "SELECT * FROM USER_ENTITY WHERE REALM_ID = %s"
+        # POPRAWIONA KWERENDA - wybieramy konkretne kolumny
+        user_query = """
+            SELECT ID, USERNAME, EMAIL, FIRST_NAME, LAST_NAME, ENABLED 
+            FROM USER_ENTITY 
+            WHERE REALM_ID = %s
+        """
         mycursor.execute(user_query, (realm_id,))
         results = mycursor.fetchall()
         print(f"Found {len(results)} users in realm {KEYCLOAK_REALM}")
@@ -100,107 +160,44 @@ async def get_users(token_data: dict = Depends(verify_token)):
         for row in results:
             try:
                 user_data = {
-                    "id": row[0], 
-                    "username": row[1],  
-                    "email": row[2],
-                    "first_name": row[3], 
-                    "last_name": row[4]
+                    "id": row[0],           # ID
+                    "username": row[1],     # USERNAME 
+                    "email": row[2],        # EMAIL
+                    "first_name": row[3],   # FIRST_NAME
+                    "last_name": row[4],    # LAST_NAME
+                    "enabled": bool(row[5]) if row[5] is not None else True  # ENABLED
                 }
                 print(f"Adding user: {user_data}")
                 users.append(user_data)
             except Exception as e:
                 print(f"Error processing user row: {e}")
+                print(f"Row data: {row}")
 
         mycursor.close()
         mydb.close()
 
+        # Sprawdź role użytkownika
         roles = token_data.get("realm_access", {}).get("roles", [])
     
         if "admin" in roles:
-            return [
-                {
-                    "id": user["id"], 
-                    "username": user["username"],
-                    "email": user["email"],
-                    "first_name": user["first_name"],
-                    "last_name": user["last_name"],
-                    "created_at": user["created_at"],
-                    "status": user["status"]
-                }
-                for user in users
-            ]
+            return users  # Zwróć pełne dane dla adminów
         else:
+            # Dla zwykłych użytkowników zwróć ograniczone dane
             return [
                 {
-                    "username": user["username"],
-                    "first_name": user["first_name"]
+                    "username": user_from_db["username"],
+                    "first_name": user_from_db["first_name"]
                 }
-                for user in users
+                for user_from_db in users
             ]
+            
     except mysql.connector.Error as err:
         print(f"Database error: {str(err)}")
         return [{"id": "1", "username": "admin (error fallback)"}]
 
 
-@router.get('/public')
-async def get_keycloak_users():
-    """Pobiera użytkowników z Keycloak za pomocą API administracyjnego"""
-    try:
-        import requests
-        
-        keycloak_url = os.getenv("KEYCLOAK_URL", "http://keycloak:8080/")
-        realm = os.getenv("KEYCLOAK_REALM", "NieTylkoQuizy")
-        
-        admin_token_url = f"{keycloak_url}/realms/master/protocol/openid-connect/token"
-        admin_data = {
-            "username": "admin",
-            "password": "admin",
-            "grant_type": "password",
-            "client_id": "admin-cli"
-        }
-        
-        print(f"Requesting admin token from: {admin_token_url}")
-        token_response = requests.post(admin_token_url, data=admin_data)
-        
-        if token_response.status_code != 200:
-            print(f"Failed to get admin token: {token_response.text}")
-            return [{"id": "1", "username": "admin (fallback)"}]
-            
-        admin_token = token_response.json().get("access_token")
-        
-        # Pobierz użytkowników z API Keycloak
-        users_url = f"{keycloak_url}/admin/realms/{realm}/users"
-        headers = {"Authorization": f"Bearer {admin_token}"}
-        
-        print(f"Requesting users from: {users_url}")
-        users_response = requests.get(users_url, headers=headers)
-        
-        if users_response.status_code != 200:
-            print(f"Failed to get users: {users_response.text}")
-            return [{"id": "1", "username": "admin (fallback)"}]
-            
-        users_data = users_response.json()
-        print(f"Found {len(users_data)} users")
-        
-        # Przekształć dane do oczekiwanego formatu
-        users = [
-            {
-                "id": user.get("id", ""),
-                "username": user.get("username", ""),
-                "email": user.get("email", ""),
-                "first_name": user.get("firstName", ""),
-                "last_name": user.get("lastName", "")
-            }
-            for user in users_data
-        ]
-        
-        return users
-    except Exception as e:
-        print(f"Error fetching users from Keycloak: {str(e)}")
-        return [{"id": "1", "username": "admin (error fallback)"}]
 
 
-# Dopiero potem zdefiniuj ścieżki z parametrami
 @router.get('/{user_id}')
 async def get_user(user_id: str, user=Depends(verify_token)):
     try:
@@ -233,3 +230,10 @@ async def get_user(user_id: str, user=Depends(verify_token)):
         return user_data
     except mysql.connector.Error as err:
         raise HTTPException(status_code=500, detail=f"Database error: {str(err)}")
+
+# Endpoint do wylogowania
+@router.post('/logout')
+async def logout(token: str = Depends(oauth2_scheme)):
+    """Endpoint do wylogowania - dodaje token do blacklisty"""
+    blacklist_token(token)
+    return {"message": "Successfully logged out"}

@@ -23,43 +23,51 @@ spec:
     spec:
       containers:
         - name: backend-users
-          image: stadnicka/backend-users:k8s
-          args:
-            - python
-            - -m
-            - uvicorn
-            - app:app
-            - --host
-            - 0.0.0.0
-            - --port
-            - "5002"
+          image: stadnicka/backend-users:redis
+          command: ["python", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "5002"]
           ports:
             - containerPort: 5002
-          env:
-            - name: DB_HOST
-              value: mysql
-            - name: DB_PORT
-              value: "3306"
-            - name: DB_NAME
-              value: quizdb
-            - name: DB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: app-secrets
-                  key: mysql-root-password
-            - name: DB_USER
-              value: root
-            - name: KEYCLOAK_CLIENT_ID
-              value: NieTylkoQuizyClient
-            - name: KEYCLOAK_REALM
-              value: NieTylkoQuizy
-            - name: KEYCLOAK_URL
-              value: http://keycloak:8080
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5002
+            initialDelaySeconds: 10
+            periodSeconds: 5
           livenessProbe:
             httpGet:
               path: /health
               port: 5002
             initialDelaySeconds: 30
-            periodSeconds: 10
-            timeoutSeconds: 5
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          env:
+            - name: DB_HOST
+              value: mysql
+            - name: DB_USER
+              value: root
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: mysql-root-password
+            - name: DB_NAME
+              value: quizdb
+            - name: KEYCLOAK_URL
+              value: http://keycloak:8080
+            - name: KEYCLOAK_REALM
+              value: NieTylkoQuizy
+            - name: KEYCLOAK_CLIENT_ID
+              value: NieTylkoQuizyClient
+            - name: REDIS_HOST
+              value: redis
+            - name: REDIS_PORT
+              value: "6379"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
       restartPolicy: Always
