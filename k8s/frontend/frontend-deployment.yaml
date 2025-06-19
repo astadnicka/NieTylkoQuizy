@@ -15,16 +15,16 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: stadnicka/frontend:latest
+          image: stadnicka/frontend:k8s
           ports:
             - containerPort: 3000
           env:
             - name: NEXT_PUBLIC_BACKEND_POSTS_URL
-              value: "http://backend-posts:5001"
+              value: "http://localhost:5001"  # ← ZMIEŃ NA LOCALHOST
             - name: NEXT_PUBLIC_BACKEND_USERS_URL
-              value: "http://backend-users:5002"
+              value: "http://localhost:5002"  # ← ZMIEŃ NA LOCALHOST
             - name: NEXT_PUBLIC_KEYCLOAK_URL
-              value: "http://keycloak:8080"
+              value: "http://localhost:8080"  # ← ZMIEŃ NA LOCALHOST
           readinessProbe:
             httpGet:
               path: /

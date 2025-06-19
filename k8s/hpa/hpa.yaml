@@ -22,6 +22,7 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: backend-posts-hpa
+  namespace: nietylkoquizy
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
@@ -41,6 +42,7 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: backend-users-hpa
+  namespace: nietylkoquizy
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
