@@ -51,6 +51,10 @@ spec:
               value: NieTylkoQuizy
             - name: KEYCLOAK_URL
               value: http://keycloak:8080
+            - name: REDIS_HOST
+              value: "redis"
+            - name: REDIS_PORT
+              value: "6379"
           livenessProbe:
             httpGet:
               path: /health

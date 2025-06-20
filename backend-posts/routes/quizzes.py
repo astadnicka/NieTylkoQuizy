@@ -5,21 +5,9 @@ from extensions import mysql
 from flask_cors import cross_origin
 import jwt
 import os
+from utils.auth import require_token, is_admin_user, get_current_user
 
 quizzes_bp = Blueprint('quizzes', __name__)
-
-def is_admin_user():
-    """Sprawdza czy użytkownik ma rolę admina na podstawie tokenu JWT"""
-    auth_header = request.headers.get('Authorization')
-    if auth_header and auth_header.startswith('Bearer '):
-        token = auth_header.split(' ')[1]
-        try:
-            decoded = jwt.decode(token, options={"verify_signature": False})
-            if 'realm_access' in decoded and 'roles' in decoded['realm_access']:
-                return 'admin' in decoded['realm_access']['roles']
-        except Exception as e:
-            print(f"Błąd dekodowania tokenu: {e}")
-    return False
 
 @quizzes_bp.route('/', methods=['GET'])
 def get_quizzes():
@@ -143,6 +131,7 @@ def get_quiz_by_id(quiz_id):
 
 @quizzes_bp.route('/', methods=['POST', 'OPTIONS'])
 @cross_origin()
+@require_token
 def create_quiz():
     if request.method == 'OPTIONS':
         return '', 200
@@ -156,18 +145,11 @@ def create_quiz():
         if 'title' not in data or 'category_id' not in data or 'questions' not in data:
             return jsonify({'error': 'Brakujące wymagane pola'}), 400
 
-        auth_header = request.headers.get('Authorization')
-        user_id = None
-        username = None
-
-        if auth_header and auth_header.startswith('Bearer '):
-            token = auth_header.split(' ')[1]
-            try:
-                decoded = jwt.decode(token, options={"verify_signature": False})
-                user_id = decoded.get('sub')
-                username = decoded.get('preferred_username')
-            except Exception as e:
-                print(f"Błąd dekodowania tokenu: {e}")
+        user = get_current_user()
+        if not user:
+            return jsonify({'error': 'Brak autoryzacji'}), 401
+        user_id = user.get('sub')
+        username = user.get('preferred_username')
 
         cursor = mysql.connection.cursor()
         cursor.execute("SET NAMES utf8mb4 COLLATE utf8mb4_polish_ci;")
@@ -210,55 +192,39 @@ def create_quiz():
 
 
 @quizzes_bp.route('/<int:quiz_id>', methods=['DELETE'])
+@require_token
 def delete_quiz(quiz_id):
-    auth_header = request.headers.get('Authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        return jsonify({'error': 'Nieautoryzowany dostęp'}), 401
-    
-    token = auth_header.split(' ')[1]
-    try:
-        decoded = jwt.decode(token, options={"verify_signature": False})
-        user_id = decoded.get('sub')
-        is_admin = is_admin_user()
-    except Exception as e:
-        return jsonify({'error': 'Nieprawidłowy token'}), 401
-    
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'Brak autoryzacji'}), 401
+    user_id = user.get('sub')
+    is_admin = is_admin_user()
     cursor = mysql.connection.cursor()
-    
     try:
         cursor.execute("""
             SELECT created_by FROM quizzes WHERE id = %s
         """, (quiz_id,))
-        
         result = cursor.fetchone()
         if not result:
             return jsonify({'error': 'Quiz nie został znaleziony'}), 404
-        
         quiz_author_id = result[0]
         if not is_admin and user_id != quiz_author_id:
             return jsonify({'error': 'Brak uprawnień do usunięcia tego quizu'}), 403
-        
         cursor.execute("""
             DELETE o FROM options o
             JOIN questions q ON o.question_id = q.id
             WHERE q.quiz_id = %s
         """, (quiz_id,))
-        
         cursor.execute("DELETE FROM questions WHERE quiz_id = %s", (quiz_id,))
-        
         cursor.execute("DELETE FROM quizzes WHERE id = %s", (quiz_id,))
-        
         mysql.connection.commit()
-        
         return jsonify({
             'success': True,
             'message': 'Quiz został pomyślnie usunięty'
         })
-        
     except Exception as e:
         mysql.connection.rollback()
         return jsonify({'error': str(e)}), 500
-        
     finally:
         cursor.close()
 

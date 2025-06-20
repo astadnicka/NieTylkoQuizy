@@ -21,3 +21,20 @@ USER1_TOKEN=$(curl -s -X POST "http://localhost:8080/realms/NieTylkoQuizy/protoc
   -X POST "http://localhost:5002/api/users/logout" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json"
+
+
+curl -X POST http://localhost:5001/quizzes/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Quiz bez tokenu",
+    "category_id": 2,
+    "questions": [
+      {
+        "question_text": "Pytanie testowe?",
+        "options": [
+          {"option_text": "A", "is_correct": true},
+          {"option_text": "B", "is_correct": false}
+        ]
+      }
+    ]
+  }'
